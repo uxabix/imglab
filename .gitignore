@@ -24,9 +24,6 @@ dist/
 *.log
 
 # Output images
-output/*.png
-output/*.jpg
-output/*.jpeg
-output/examples/*.png
-output/examples/*.jpg
-output/examples/*.jpeg
+output/*
+!output/examples/
+!output/examples/**
