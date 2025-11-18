@@ -13,7 +13,8 @@ The project demonstrates how classical image transformations work internally: co
 - Add  
 - Subtract  
 - Multiply  
-- Divide  
+- Divide
+- Gamma correction
 
 These operate pixel-by-pixel with clipping to the valid range (0–255).
 
