@@ -78,16 +78,16 @@ python Examples.py
 ![Median](output/examples/median.jpg)
 
 #### Gaussian Blur  
-`output/examples/gauss.jpg`  
-![Gaussian](output/examples/gauss.jpg)
+`output/examples/gaussian.jpg`  
+![Gaussian](output/examples/gaussian.jpg)
 
 #### Sharpen Filter  
 `output/examples/sharpen.jpg`  
 ![Sharpen](output/examples/sharpen.jpg)
 
 #### Sobel (0°, 45°, 90°, 135° combined)  
-`output/examples/sobel0,45,90,135.jpg`  
-![Sobel](output/examples/sobel0,45,90,135.jpg)
+`output/examples/sobel_all.jpg`  
+![Sobel](output/examples/sobel_all.jpg)
 
 #### Arithmetic: Add  
 `output/examples/add.jpg`  
