@@ -98,6 +98,7 @@ python Examples.py
 Only:
 - numpy
 - Pillow
+- tqdm (used for progress bar in `Examples.py`)
 
 The project intentionally avoids OpenCV or SciPy to preserve the educational nature.
 
