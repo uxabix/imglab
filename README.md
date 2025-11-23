@@ -1,6 +1,6 @@
-# PS4 — Image Processing Educational Project
+# imglab — Image Processing Educational Project
 
-This repository contains an **educational image-processing project** created as part of a university assignment.  
+This repository contains an **image-processing project** that started as a university assignment and was further developed into a more complete, extensible, and practical tool.  
 The goal is to **implement common image-processing operations manually**, using only core Python and **NumPy**, without relying on external image-processing libraries like OpenCV.
 
 The project demonstrates how classical image transformations work internally: convolution, filtering, edge detection, pixel-wise operations, gamma correction, and more.
@@ -22,8 +22,9 @@ These operate pixel-by-pixel with clipping to the valid range (0–255).
 
 ### **2. Grayscale Conversion**
 Implemented in several modes:
-- Standard grayscale  
-- Per-channel grayscale (R / G / B weighted)
+- Standard grayscale (lominosity)
+- Mean  
+- Per-channel grayscale (R / G / B)
 
 ---
 
