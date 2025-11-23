@@ -9,6 +9,21 @@ operate on NumPy arrays and support both grayscale and RGB images.
 import numpy as np
 
 
+def rgb_filter(func):
+    """Decorator: convert a grayscale filter into an RGB filter."""
+
+    def wrapper(image, *args, **kwargs):
+        if image.ndim == 2:
+            return func(image, *args, **kwargs)
+
+        out = np.zeros_like(image)
+        for c in range(3):
+            out[:, :, c] = func(image[:, :, c], *args, **kwargs)
+        return out
+
+    return wrapper
+
+
 def convolve2d(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     """Apply 2D convolution using zero padding.
 
@@ -21,7 +36,7 @@ def convolve2d(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     """
     kh, kw = kernel.shape
     ph, pw = kh // 2, kw // 2
-    padded = np.pad(image, ((ph, ph), (pw, pw)), mode="constant", constant_values=0)
+    padded = np.pad(image, ((ph, ph), (pw, pw)), mode="edge")
 
     H, W = image.shape
     out = np.zeros_like(image, dtype=np.float32)
@@ -34,6 +49,7 @@ def convolve2d(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     return out
 
 
+@rgb_filter
 def mean_filter(image: np.ndarray, size: int = 3) -> np.ndarray:
     """Apply mean (box) filter.
 
@@ -48,6 +64,7 @@ def mean_filter(image: np.ndarray, size: int = 3) -> np.ndarray:
     return convolve2d(image, kernel)
 
 
+@rgb_filter
 def sharpen_filter(image: np.ndarray) -> np.ndarray:
     """Apply sharpening filter using a standard 3x3 kernel.
 
@@ -66,6 +83,7 @@ def sharpen_filter(image: np.ndarray) -> np.ndarray:
     return convolve2d(image, kernel)
 
 
+@rgb_filter
 def gaussian_filter(image: np.ndarray, sigma: float = 1.0, size: int = 3) -> np.ndarray:
     """Apply Gaussian blur.
 
@@ -78,11 +96,12 @@ def gaussian_filter(image: np.ndarray, sigma: float = 1.0, size: int = 3) -> np.
         Blurred image.
     """
     x, y = np.mgrid[-size // 2:size // 2 + 1, -size // 2:size // 2 + 1]
-    g = np.exp(-(x**2 + y**2) / (2.0 * sigma**2))
+    g = np.exp(-(x ** 2 + y ** 2) / (2.0 * sigma ** 2))
     g /= g.sum()
     return convolve2d(image, g)
 
 
+@rgb_filter
 def median_filter(image: np.ndarray, ksize: int = 3) -> np.ndarray:
     """Apply median filter.
 
@@ -130,6 +149,7 @@ SOBEL_KERNELS = {
 }
 
 
+@rgb_filter
 def sobel(image: np.ndarray, angles=("0", "90")) -> np.ndarray:
     """Apply Sobel edge detection.
 
@@ -152,18 +172,11 @@ def sobel(image: np.ndarray, angles=("0", "90")) -> np.ndarray:
     return magnitude.astype(np.uint8)
 
 
-def apply_filter_rgb(image: np.ndarray, filter_func, **kwargs) -> np.ndarray:
-    """Apply a grayscale filter channel-wise to an RGB image.
-
+@rgb_filter
+def custom_kernel_filter(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
+    """Apply custom kernel filter.
     Args:
-        image: RGB image (H × W × 3).
-        filter_func: Function to apply to each channel.
-        **kwargs: Additional filter parameters.
-
-    Returns:
-        RGB image with filter applied to each channel.
+        image: Grayscale image.
+        kernel: Custom kernel.
     """
-    out = np.zeros_like(image)
-    for c in range(3):
-        out[:, :, c] = filter_func(image[:, :, c], **kwargs)
-    return out
+    return convolve2d(image, kernel)
