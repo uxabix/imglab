@@ -1,11 +1,26 @@
 import sys
-import Filters as F
-import ArithmeticalOperations as A
 
-def parse_angles(values):
-    if not values:
+import ArithmeticalOperations as A
+import Filters as F
+from config import cfg
+
+
+def parse_angles(val_str):
+    """Parses a string like '0,90' or '(0, 90)' into a tuple of strings."""
+    if not val_str:
         return ("0", "90")
-    return tuple(values)
+
+    cleaned = val_str.replace("(", "").replace(")", "").replace("'", "").replace('"', "")
+
+    if not cleaned:
+        return ("0", "90")
+
+    # Разбиваем по запятой
+    if "," in cleaned:
+        return tuple(x.strip() for x in cleaned.split(",") if x.strip())
+
+    return (cleaned,)
+
 
 COMMANDS = {
     "global": {
@@ -16,7 +31,7 @@ COMMANDS = {
             "args": [
                 {"name": "filename", "type": str, "required": True}
             ],
-            "desc": "Load an image from file.",
+            "desc": "Load an image from file (relative to input_dir).",
             "func": lambda pipe, filename: pipe.load(filename),
         },
         "save": {
@@ -26,7 +41,7 @@ COMMANDS = {
             "args": [
                 {"name": "filename", "type": str, "required": True}
             ],
-            "desc": "Save the current result to file.",
+            "desc": "Save the current result (relative to output_dir).",
             "func": lambda pipe, filename: pipe.save(filename),
         },
         "undo": {
@@ -53,6 +68,56 @@ COMMANDS = {
             "desc": "Exit the program.",
             "func": lambda pipe: sys.exit(0)
         },
+        "history": {
+            "id": 99,
+            "name": "history",
+            "aliases": ["h"],
+            "args": [],
+            "desc": "Show execution history.",
+            "func": lambda pipe: pipe.print_history()
+        }
+    },
+
+    "configuration": {
+        "set_input": {
+            "id": 20,
+            "name": "set_input",
+            "aliases": ["inp"],
+            "args": [{"name": "path", "type": str, "required": True}],
+            "desc": "Set input directory.",
+            "func": lambda pipe, path: (cfg.set("input_dir", path), print(f"Input dir set to: {path}"))
+        },
+        "set_output": {
+            "id": 21,
+            "name": "set_output",
+            "aliases": ["out"],
+            "args": [{"name": "path", "type": str, "required": True}],
+            "desc": "Set output directory.",
+            "func": lambda pipe, path: (cfg.set("output_dir", path), print(f"Output dir set to: {path}"))
+        },
+        "mode": {
+            "id": 22,
+            "name": "mode",
+            "aliases": ["m"],
+            "args": [
+                {"name": "val", "type": int, "required": True},
+                {"name": "filename", "type": str, "required": False, "default": "output.png"}
+            ],
+            "desc": "Set mode: 0=Manual, 1=Auto-NewFile, 2=Auto-FixedFile.",
+            "func": lambda pipe, val, filename: (
+                cfg.set("mode", val),
+                cfg.set("fixed_filename", filename),
+                print(f"Mode set to {val}" + (f" (file: {filename})" if val == 2 else ""))
+            )
+        },
+        "info": {
+            "id": 23,
+            "name": "info",
+            "aliases": ["i"],
+            "args": [],
+            "desc": "Show current configuration.",
+            "func": lambda pipe: print(f"Config: {cfg.config}")
+        }
     },
 
     "filters": {
@@ -64,7 +129,7 @@ COMMANDS = {
                 {"name": "size", "type": int, "required": False, "default": 3}
             ],
             "desc": "Mean (box) filter.",
-            "func": lambda pipe, size: pipe.apply(F.mean_filter, size)
+            "func": lambda pipe, size: pipe.apply(F.mean_filter, "mean", size)
         },
         "sharpen": {
             "id": 7,
@@ -72,7 +137,7 @@ COMMANDS = {
             "aliases": ["7"],
             "args": [],
             "desc": "Sharpen filter.",
-            "func": lambda pipe: pipe.apply(F.sharpen_filter)
+            "func": lambda pipe: pipe.apply(F.sharpen_filter, "sharpen")
         },
         "gaussian": {
             "id": 8,
@@ -83,7 +148,7 @@ COMMANDS = {
                 {"name": "size", "type": int, "required": False, "default": 3},
             ],
             "desc": "Gaussian blur.",
-            "func": lambda pipe, sigma, size: pipe.apply(F.gaussian_filter, sigma, size)
+            "func": lambda pipe, sigma, size: pipe.apply(F.gaussian_filter, "gaussian", sigma, size)
         },
         "median": {
             "id": 9,
@@ -93,7 +158,7 @@ COMMANDS = {
                 {"name": "ksize", "type": int, "required": False, "default": 3}
             ],
             "desc": "Median filter.",
-            "func": lambda pipe, ksize: pipe.apply(F.median_filter, ksize)
+            "func": lambda pipe, ksize: pipe.apply(F.median_filter, "median", ksize)
         },
         "sobel": {
             "id": 10,
@@ -103,7 +168,7 @@ COMMANDS = {
                 {"name": "angles", "type": parse_angles, "required": False, "default": ("0", "90")}
             ],
             "desc": "Sobel edge detector.",
-            "func": lambda pipe, angles: pipe.apply(F.sobel, angles)
+            "func": lambda pipe, angles: pipe.apply(F.sobel, "sobel", angles)
         },
     },
 
@@ -116,7 +181,7 @@ COMMANDS = {
                 {"name": "value", "type": int, "required": True}
             ],
             "desc": "Add value to all pixels.",
-            "func": lambda pipe, value: pipe.apply(A.image_add, value)
+            "func": lambda pipe, value: pipe.apply(A.image_add, "add", value)
         },
         "sub": {
             "id": 12,
@@ -126,7 +191,7 @@ COMMANDS = {
                 {"name": "value", "type": int, "required": True}
             ],
             "desc": "Subtract value from all pixels.",
-            "func": lambda pipe, value: pipe.apply(A.image_subtract, value)
+            "func": lambda pipe, value: pipe.apply(A.image_subtract, "sub", value)
         },
         "mul": {
             "id": 13,
@@ -136,7 +201,7 @@ COMMANDS = {
                 {"name": "value", "type": float, "required": True}
             ],
             "desc": "Multiply image by value.",
-            "func": lambda pipe, value: pipe.apply(A.image_multiply, value)
+            "func": lambda pipe, value: pipe.apply(A.image_multiply, "mul", value)
         },
         "div": {
             "id": 14,
@@ -146,7 +211,7 @@ COMMANDS = {
                 {"name": "value", "type": float, "required": True}
             ],
             "desc": "Divide image by value.",
-            "func": lambda pipe, value: pipe.apply(A.image_divide, value)
+            "func": lambda pipe, value: pipe.apply(A.image_divide, "div", value)
         },
         "gamma": {
             "id": 15,
@@ -156,7 +221,7 @@ COMMANDS = {
                 {"name": "value", "type": float, "required": True}
             ],
             "desc": "Gamma correction.",
-            "func": lambda pipe, value: pipe.apply(A.gamma_correction, value)
+            "func": lambda pipe, value: pipe.apply(A.gamma_correction, "gamma", value)
         },
         "gray": {
             "id": 16,
@@ -166,16 +231,18 @@ COMMANDS = {
                 {"name": "method", "type": str, "required": True}
             ],
             "desc": "Convert to grayscale.",
-            "func": lambda pipe, method: pipe.apply(A.gray_scale, method)
+            "func": lambda pipe, method: pipe.apply(A.gray_scale, "gray", method)
         },
     }
 }
 
 def find_command(name):
-    """Search command by name or ID across all registries."""
+    """Search command by name, alias OR ID string."""
     for group in COMMANDS.values():
         for cmd in group.values():
-            if name == cmd["name"] or name in cmd["aliases"]:
+            if (name == cmd["name"] or
+                    name in cmd["aliases"] or
+                    name == str(cmd["id"])):
                 return cmd
     return None
 
@@ -193,17 +260,20 @@ def parse_user_args(cmd, tokens):
                     args[key] = spec["type"](val)
                     break
 
-    # Case 2: user passed positional-only for required args
+    # Case 2: user passed positional-only for remaining args
     pos_values = [t for t in tokens if "=" not in t]
     pos_index = 0
 
     for spec in cmd["args"]:
-        if spec["name"] not in args:
+        if spec["name"] in args:
+            continue
+
+        if pos_index < len(pos_values):
+            args[spec["name"]] = spec["type"](pos_values[pos_index])
+            pos_index += 1
+        else:
             if spec["required"]:
-                if pos_index >= len(pos_values):
-                    raise ValueError(f"Missing required argument: {spec['name']}")
-                args[spec["name"]] = spec["type"](pos_values[pos_index])
-                pos_index += 1
+                raise ValueError(f"Missing required argument: {spec['name']}")
             else:
                 args[spec["name"]] = spec["default"]
 

@@ -27,3 +27,6 @@ dist/
 output/*
 !output/examples/
 !output/examples/**
+
+# Config
+config.json
