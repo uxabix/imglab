@@ -10,18 +10,36 @@ import numpy as np
 
 
 def rgb_filter(func):
-    """Decorator: convert a grayscale filter into an RGB filter."""
+    """Decorator: convert a grayscale filter into an RGB filter
+    and clamp final results to valid uint8 range.
+    """
 
     def wrapper(image, *args, **kwargs):
+        # Grayscale → apply filter, clip, convert
         if image.ndim == 2:
-            return func(image, *args, **kwargs)
+            result = func(image, *args, **kwargs)
 
-        out = np.zeros_like(image)
+            # Sobel already returns uint8 → leave it
+            if result.dtype == np.uint8:
+                return result
+
+            return np.clip(result, 0, 255).astype(np.uint8)
+
+        # RGB → apply filter per channel
+        out = np.zeros_like(image, dtype=np.float32)
+
         for c in range(3):
-            out[:, :, c] = func(image[:, :, c], *args, **kwargs)
-        return out
+            channel_result = func(image[:, :, c], *args, **kwargs)
+
+            if channel_result.dtype == np.uint8:
+                out[:, :, c] = channel_result
+            else:
+                out[:, :, c] = np.clip(channel_result, 0, 255)
+
+        return out.astype(np.uint8)
 
     return wrapper
+
 
 
 def convolve2d(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
