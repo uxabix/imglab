@@ -1,11 +1,11 @@
 """
-Generate example output images demonstrating filtering
-and arithmetic operations on an input image.
+Generate example output images demonstrating filtering,
+arithmetic operations, and morphological operations on an input image.
 
 This script loads a sample image, applies a variety of
 transformations (arithmetic, grayscale, smoothing, sharpening,
-Gaussian blur, median filtering, and Sobel edge detection),
-and saves all results into the output directory.
+Gaussian blur, median filtering, Sobel edge detection, and
+morphological filters), and saves all results into the output directory.
 """
 
 import os
@@ -17,6 +17,7 @@ from tqdm import tqdm
 from ImageIO import load_image, save_image
 import ArithmeticalOperations as ao
 import Filters as f
+import MorphologicalFilters as mf
 
 
 def generate_examples(input_path: str, output_dir: str) -> None:
@@ -56,6 +57,47 @@ def generate_examples(input_path: str, output_dir: str) -> None:
         "sobel_0_90": (f.sobel, {"angles": ("0", "90")}),
         "sobel_all": (f.sobel, {"angles": ("0", "45", "90", "135")}),
         "sobel_45": (f.sobel, {"angles": ("45",)}),
+
+        # Binary
+        "binary":  (mf.binary, {}),
+        # Morphological filters
+        "morphological_dilation": (mf.dilation, {"se": np.ones((3,3), dtype=np.uint8)}),
+        "morphological_erosion": (mf.erosion, {"se": np.ones((3,3), dtype=np.uint8)}),
+        "morphological_opening": (mf.opening, {}),
+        "morphological_closing": (mf.closing, {}),
+        # Hit-or-Miss, Thinning и Thickening:
+        # For demonstration use simple 3x3 SE
+        "morphological_hit_or_miss": (
+            mf.hit_or_miss,
+            {"se_obj": np.array([[0,0,0],
+                                [0,1,0],
+                                [0,0,0]]),
+             "se_bg": np.array([[1,1,1],
+                                [1,0,1],
+                                [1,1,1]])}
+        ),
+        "morphological_thinning": (
+            mf.thinning,
+            {"se_list": [
+                (np.array([[0, 1, 0],
+                           [1, 1, 1],
+                           [0, 1, 0]]),
+                 np.array([[1, 0, 1],
+                           [0, 0, 0],
+                           [1, 0, 1]]))
+            ]}
+        ),
+        "morphological_thickening": (
+            mf.thickening,
+            {"se_list": [
+                (np.array([[0, 1, 0],
+                           [1, 1, 1],
+                           [0, 1, 0]]),
+                 np.array([[1, 0, 1],
+                           [0, 0, 0],
+                           [1, 0, 1]]))
+            ]}
+        ),
     }
 
     os.makedirs(output_dir, exist_ok=True)
