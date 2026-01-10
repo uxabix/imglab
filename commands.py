@@ -2,6 +2,7 @@ import sys
 
 import ArithmeticalOperations as A
 import Filters as F
+import MorphologicalFilters as M
 from config import cfg
 
 
@@ -15,11 +16,17 @@ def parse_angles(val_str):
     if not cleaned:
         return ("0", "90")
 
-    # Разбиваем по запятой
     if "," in cleaned:
         return tuple(x.strip() for x in cleaned.split(",") if x.strip())
 
     return (cleaned,)
+
+
+def parse_se_size(val_str):
+    """Parse structuring element size. Returns integer size (e.g., 3 for 3x3)."""
+    if not val_str:
+        return 3
+    return int(val_str)
 
 
 COMMANDS = {
@@ -233,8 +240,76 @@ COMMANDS = {
             "desc": "Convert to grayscale.",
             "func": lambda pipe, method: pipe.apply(A.gray_scale, "gray", method)
         },
+    },
+
+    "morphological": {
+        "binary": {
+            "id": 17,
+            "name": "binary",
+            "aliases": ["17"],
+            "args": [
+                {"name": "threshold", "type": int, "required": False, "default": 128}
+            ],
+            "desc": "Convert image to binary (0 or 255).",
+            "func": lambda pipe, threshold: pipe.apply(M.binary, "binary", threshold)
+        },
+        "dilate": {
+            "id": 18,
+            "name": "dilate",
+            "aliases": ["18"],
+            "args": [
+                {"name": "size", "type": parse_se_size, "required": False, "default": 3}
+            ],
+            "desc": "Morphological dilation (SE: size x size).",
+            "func": lambda pipe, size: pipe.apply(
+                lambda img: M.dilation(img, np.ones((size, size), dtype=np.uint8)),
+                "dilate"
+            )
+        },
+        "erode": {
+            "id": 19,
+            "name": "erode",
+            "aliases": ["19"],
+            "args": [
+                {"name": "size", "type": parse_se_size, "required": False, "default": 3}
+            ],
+            "desc": "Morphological erosion (SE: size x size).",
+            "func": lambda pipe, size: pipe.apply(
+                lambda img: M.erosion(img, np.ones((size, size), dtype=np.uint8)),
+                "erode"
+            )
+        },
+        "open": {
+            "id": 24,
+            "name": "open",
+            "aliases": ["24"],
+            "args": [
+                {"name": "size", "type": parse_se_size, "required": False, "default": 3}
+            ],
+            "desc": "Morphological opening (erosion → dilation).",
+            "func": lambda pipe, size: pipe.apply(
+                lambda img: M.opening(img, np.ones((size, size), dtype=np.uint8)),
+                "open"
+            )
+        },
+        "close": {
+            "id": 25,
+            "name": "close",
+            "aliases": ["25"],
+            "args": [
+                {"name": "size", "type": parse_se_size, "required": False, "default": 3}
+            ],
+            "desc": "Morphological closing (dilation → erosion).",
+            "func": lambda pipe, size: pipe.apply(
+                lambda img: M.closing(img, np.ones((size, size), dtype=np.uint8)),
+                "close"
+            )
+        },
     }
 }
+
+import numpy as np
+
 
 def find_command(name):
     """Search command by name, alias OR ID string."""
