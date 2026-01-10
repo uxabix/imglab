@@ -14,10 +14,72 @@ from typing import Callable, Dict, Tuple, Any
 import numpy as np
 from tqdm import tqdm
 
-from ImageIO import load_image, save_image
 import ArithmeticalOperations as ao
 import Filters as f
 import MorphologicalFilters as mf
+from ImageIO import load_image, save_image
+
+
+def rotate_se(se: np.ndarray) -> np.ndarray:
+    """Rotate structuring element by 90 degrees."""
+    return np.rot90(se)
+
+
+# ===== HIT-OR-MISS STRUCTURING ELEMENTS =====
+
+# Thinning
+SE_THINNING_BASE = [
+    (
+        np.array([[0, 0, 0],
+                  [2, 1, 2],
+                  [1, 1, 1]], dtype=np.uint8),
+        np.array([[1, 1, 1],
+                  [2, 0, 2],
+                  [0, 0, 0]], dtype=np.uint8)
+    ),
+    (
+        np.array([[2, 0, 0],
+                  [1, 1, 0],
+                  [2, 1, 2]], dtype=np.uint8),
+        np.array([[2, 1, 1],
+                  [0, 0, 1],
+                  [2, 0, 0]], dtype=np.uint8)
+    ),
+]
+
+SE_THINNING = []
+for se_obj, se_bg in SE_THINNING_BASE:
+    for _ in range(4):
+        SE_THINNING.append((se_obj, se_bg))
+        se_obj = rotate_se(se_obj)
+        se_bg = rotate_se(se_bg)
+
+# Thickening
+SE_THICKENING_BASE = [
+    (
+        np.array([[1, 1, 2],
+                  [1, 0, 2],
+                  [1, 2, 0]], dtype=np.uint8),
+        np.array([[0, 0, 2],
+                  [0, 1, 2],
+                  [0, 2, 1]], dtype=np.uint8)
+    ),
+    (
+        np.array([[2, 1, 1],
+                  [2, 0, 1],
+                  [0, 2, 1]], dtype=np.uint8),
+        np.array([[2, 0, 0],
+                  [2, 1, 0],
+                  [1, 2, 0]], dtype=np.uint8)
+    ),
+]
+
+SE_THICKENING = []
+for se_obj, se_bg in SE_THICKENING_BASE:
+    for _ in range(4):
+        SE_THICKENING.append((se_obj, se_bg))
+        se_obj = rotate_se(se_obj)
+        se_bg = rotate_se(se_bg)
 
 
 def generate_examples(input_path: str, output_dir: str) -> None:
@@ -59,44 +121,20 @@ def generate_examples(input_path: str, output_dir: str) -> None:
         "sobel_45": (f.sobel, {"angles": ("45",)}),
 
         # Binary
-        "binary":  (mf.binary, {}),
+        "binary": (mf.binary, {}),
         # Morphological filters
-        "morphological_dilation": (mf.dilation, {"se": np.ones((3,3), dtype=np.uint8)}),
-        "morphological_erosion": (mf.erosion, {"se": np.ones((3,3), dtype=np.uint8)}),
+        "morphological_dilation": (mf.dilation, {"se": np.ones((3, 3), dtype=np.uint8)}),
+        "morphological_erosion": (mf.erosion, {"se": np.ones((3, 3), dtype=np.uint8)}),
         "morphological_opening": (mf.opening, {}),
         "morphological_closing": (mf.closing, {}),
-        # Hit-or-Miss, Thinning и Thickening:
-        # For demonstration use simple 3x3 SE
-        "morphological_hit_or_miss": (
-            mf.hit_or_miss,
-            {"se_obj": np.array([[0,0,0],
-                                [0,1,0],
-                                [0,0,0]]),
-             "se_bg": np.array([[1,1,1],
-                                [1,0,1],
-                                [1,1,1]])}
-        ),
+        # Hit-or-Miss: thinning & thickening (correct, 8 SE, iterative)
         "morphological_thinning": (
             mf.thinning,
-            {"se_list": [
-                (np.array([[0, 1, 0],
-                           [1, 1, 1],
-                           [0, 1, 0]]),
-                 np.array([[1, 0, 1],
-                           [0, 0, 0],
-                           [1, 0, 1]]))
-            ]}
+            {"se_list": SE_THINNING}
         ),
         "morphological_thickening": (
             mf.thickening,
-            {"se_list": [
-                (np.array([[0, 1, 0],
-                           [1, 1, 1],
-                           [0, 1, 0]]),
-                 np.array([[1, 0, 1],
-                           [0, 0, 0],
-                           [1, 0, 1]]))
-            ]}
+            {"se_list": SE_THICKENING}
         ),
     }
 

@@ -157,36 +157,70 @@ def closing(image: np.ndarray, se: np.ndarray = None) -> np.ndarray:
     return erosion(dilation(image, se), se)
 
 
-def hit_or_miss(image: np.ndarray, se_obj: np.ndarray, se_bg: np.ndarray) -> np.ndarray:
-    """Hit-or-Miss transform."""
-    image = _ensure_grayscale_2d(image)
-    img_bin = to_binary(image)
-
+def _hit_or_miss_bin(img_bin: np.ndarray,
+                     se_obj: np.ndarray,
+                     se_bg: np.ndarray) -> np.ndarray:
+    """
+    Binary Hit-or-Miss mechanism.
+    Expects img_bin with values {0,1}.
+    Returns binary mask {0,1}.
+    """
     eroded_obj = _erosion_bin(img_bin, se_obj)
     eroded_bg = _erosion_bin(1 - img_bin, se_bg)
-    out = np.logical_and(eroded_obj == 1, eroded_bg == 1)
-    return out.astype(np.uint8) * 255
+    return np.logical_and(eroded_obj, eroded_bg).astype(np.uint8)
 
 
-def thinning(image: np.ndarray, se_list: list) -> np.ndarray:
-    """Thinning using Hit-or-Miss with multiple SEs."""
+def thinning(image: np.ndarray, se_list: list, max_iter: int = 25) -> np.ndarray:
+    """
+    Hit-or-Miss thinning.
+
+    - Iterative algorithm with convergence check
+    - Each SE is applied on the state at iteration start
+    - Stops early if no pixels are removed
+    """
     image = _ensure_grayscale_2d(image)
-    img_bin = to_binary(image)
+    out = to_binary(image)  # values {0,1}
 
-    out = img_bin.copy()
-    for se_obj, se_bg in se_list:
-        hm = hit_or_miss(out, se_obj, se_bg) // 255
-        out = np.where(hm == 1, 0, out)
+    # Iteratively applies structuring elements until convergence
+    for _ in range(max_iter):
+        prev = out.copy()
+        change_happened = False
+
+        for se_obj, se_bg in se_list:
+            hm = _hit_or_miss_bin(prev, se_obj, se_bg)
+            if hm.any():
+                out[hm == 1] = 0
+                change_happened = True
+
+        if not change_happened:
+            break
+
     return (out * 255).astype(np.uint8)
 
 
-def thickening(image: np.ndarray, se_list: list) -> np.ndarray:
-    """Thickening using Hit-or-Miss with multiple SEs."""
-    image = _ensure_grayscale_2d(image)
-    img_bin = to_binary(image)
+def thickening(image: np.ndarray, se_list: list, max_iter: int = 25) -> np.ndarray:
+    """
+    Hit-or-Miss thickening.
 
-    out = img_bin.copy()
-    for se_obj, se_bg in se_list:
-        hm = hit_or_miss(out, se_obj, se_bg) // 255
-        out = np.where(hm == 1, 1, out)
+    - Iterative algorithm with convergence check
+    - Each SE is applied on the state at iteration start
+    - Stops early if no pixels are added
+    """
+    image = _ensure_grayscale_2d(image)
+    out = to_binary(image)  # values {0,1}
+
+    # Iteratively applies structuring elements until convergence
+    for _ in range(max_iter):
+        prev = out.copy()
+        change_happened = False
+
+        for se_obj, se_bg in se_list:
+            hm = _hit_or_miss_bin(prev, se_obj, se_bg)
+            if hm.any():
+                out[hm == 1] = 1
+                change_happened = True
+
+        if not change_happened:
+            break
+
     return (out * 255).astype(np.uint8)
